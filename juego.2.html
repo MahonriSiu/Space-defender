@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Space Defender</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        body {
+            background: #000;
+            font-family: monospace;
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #0a0a1a;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            font-size: 14px;
+            z-index: 5;
+        }
+        
+        .stat-box {
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 10px;
+            opacity: 0.7;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        #lives { color: #ff3366; }
+        #score { color: #00ff88; }
+        #time { color: #00ccff; }
+        #coins { color: #ffd700; }
+        
+        .heart { color: #ff3366; }
+        .heart.lost { opacity: 0.3; }
+        
+        #controls {
+            position: absolute;
+            bottom: 70px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: none;
+        }
+        
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(0, 255, 255, 0.3);
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        
+        .control-btn:active {
+            background: rgba(0, 255, 255, 0.6);
+        }
+        
+        .control-btn.fire {
+            background: rgba(255, 51, 102, 0.3);
+            border-color: #ff3366;
+            color: #ff3366;
+            width: 90px;
+            height: 90px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .control-btn.fire:active {
+            background: rgba(255, 51, 102, 0.6);
+        }
+        
+        .d-pad {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            z-index: 100;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 28px;
+            color: #00ffff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            font-size: 22px;
+            color: #ffd700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+        
+        .btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            background: transparent;
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: monospace;
+            font-weight: bold;
+            min-width: 200px;
+            margin: 5px 0;
+        }
+        
+        .btn:active {
+            background: #00ffff;
+            color: #000;
+        }
+        
+        .btn.shop {
+            border-color: #ffd700;
+            color: #ffd700;
+        }
+        
+        .btn.shop:active {
+            background: #ffd700;
+            color: #000;
+        }
+        
+        .btn.back {
+            border-color: #ff6666;
+            color: #ff6666;
+            font-size: 14px;
+            padding: 10px 30px;
+            min-width: 150px;
+        }
+        
+        .btn.back:active {
+            background: #ff6666;
+            color: #000;
+        }
+        
+        .instructions {
+            color: #aaa;
+            font-size: 13px;
+            line-height: 1.8;
+            padding: 0 20px;
+        }
+        
+        .instructions span {
+            color: #00ffff;
+            font-weight: bold;
+        }
+        
+        .coin-display {
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid #ffd700;
+            border-radius: 20px;
+            padding: 10px 30px;
+            margin: 10px 0;
+        }
+        
+        .coin-display .label {
+            font-size: 12px;
+            color: #ffd700;
+            opacity: 0.8;
+        }
+        
+        .coin-display .amount {
+            font-size: 24px;
+            color: #ffd700;
+            font-weight: bold;
+        }
+        
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            max-height: 50vh;
+            overflow-y: auto;
+            padding: 10px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .color-item {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid #444;
+            border-radius: 15px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .color-item.owned {
+            border-color: #00ff88;
+            opacity: 0.5;
+        }
+        
+        .color-preview {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 0 20px currentColor;
+        }
+        
+        .color-name {
+            font-size: 14px;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .color-price {
+            font-size: 12px;
+            color: #ffd700;
+        }
+        
+        .btn.buy {
+            font-size: 14px;
+            padding: 8px 20px;
+            min-width: auto;
+        }
+        
+        .btn.buy:disabled {
+            border-color: #666;
+            color: #666;
+            opacity: 0.5;
+        }
+        
+        .owned-badge {
+            color: #00ff88;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui">
+            <div class="stat-box" id="lives">
+                <div class="stat-label">VIDAS</div>
+                <div>
+                    <span class="heart">♥</span>
+                    <span class="heart">♥</span>
+                    <span class="heart">♥</span>
+                </div>
+            </div>
+            
+            <div class="stat-box" id="score">
+                <div class="stat-label">PUNTOS</div>
+                <div class="stat-value">0</div>
+            </div>
+            
+            <div class="stat-box" id="time">
+                <div class="stat-label">TIEMPO</div>
+                <div class="stat-value">00:00</div>
+            </div>
+            
+            <div class="stat-box" id="coins">
+                <div class="stat-label">MONEDAS</div>
+                <div class="stat-value">0</div>
+            </div>
+        </div>
+        
+        <div id="controls" class="hidden">
+            <div class="d-pad">
+                <div class="control-btn" id="btnLeft">←</div>
+                <div class="control-btn" id="btnRight">→</div>
+            </div>
+            <div class="control-btn fire" id="btnFire">FIRE</div>
+        </div>
+        
+        <!-- Menú Principal -->
+        <div id="mainMenu" class="screen">
+            <h1>★ SPACE DEFENDER ★</h1>
+            <div class="coin-display">
+                <div class="label">MONEDAS TOTALES</div>
+                <div class="amount" id="menuCoins">0</div>
+            </div>
+            <button class="btn" id="playBtn">JUGAR</button>
+            <button class="btn shop" id="shopBtn">TIENDA</button>
+        </div>
+        
+        <!-- Tienda -->
+        <div id="shopScreen" class="screen hidden">
+            <h2>🛒 TIENDA DE COLORES</h2>
+            <div class="coin-display">
+                <div class="label">TUS MONEDAS</div>
+                <div class="amount" id="shopCoins">0</div>
+            </div>
+            <div class="color-grid" id="colorGrid"></div>
+            <button class="btn back" id="backBtn">← VOLVER</button>
+        </div>
+        
+        <!-- Pantalla de inicio de juego (ahora oculta por defecto) -->
+        <div id="startScreen" class="screen hidden">
+            <h1>★ SPACE DEFENDER ★</h1>
+            <div class="instructions">
+                <p>Usa <span>← →</span> para moverte</p>
+                <p><span>FIRE</span> para disparar</p>
+                <p>Naves grandes = <span>3 pts</span> = <span>3 monedas</span></p>
+                <p>Naves pequeñas = <span>1 pt</span> = <span>1 moneda</span></p>
+            </div>
+            <button class="btn" id="startBtn">INICIAR</button>
+        </div>
+        
+        <!-- Pantalla de Game Over -->
+        <div id="gameOverScreen" class="screen hidden">
+            <h1>GAME OVER</h1>
+            <div class="instructions">
+                <p>Puntos: <span id="finalScore">0</span></p>
+                <p>Monedas ganadas: <span id="finalCoins" style="color: #ffd700;">0</span></p>
+                <p>Tiempo: <span id="finalTime">00:00</span></p>
+            </div>
+            <button class="btn" id="restartBtn">JUGAR DE NUEVO</button>
+            <button class="btn back" id="menuBtn">← MENÚ</button>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            initGame();
+        };
+        
+        function initGame() {
+            var canvas = document.getElementById('gameCanvas');
+            var ctx = canvas.getContext('2d');
+            
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+            
+            // Datos del juego
+            var gameRunning = false;
+            var lives = 3;
+            var score = 0;
+            var sessionCoins = 0;
+            var totalCoins = parseInt(localStorage.getItem('spaceCoins') || '0');
+            var startTime = 0;
+            var elapsedTime = 0;
+            var animationId;
+            
+            // Colores disponibles
+            var colors = [
+                { id: 'cyan', name: 'Cian Clásico', hex: '#00ccff', body: '#00ccff', dark: '#0088aa', price: 0, owned: true },
+                { id: 'red', name: 'Fuego Rojo', hex: '#ff3333', body: '#ff3333', dark: '#aa0000', price: 20000 },
+                { id: 'green', name: 'Nebula Verde', hex: '#00ff66', body: '#00ff66', dark: '#00aa44', price: 20000 },
+                { id: 'purple', name: 'Galaxia Púrpura', hex: '#cc33ff', body: '#cc33ff', dark: '#8800aa', price: 20000 },
+                { id: 'gold', name: 'Oro Estelar', hex: '#ffcc00', body: '#ffcc00', dark: '#aa8800', price: 20000 },
+                { id: 'pink', name: 'Rosa Cósmico', hex: '#ff66cc', body: '#ff66cc', dark: '#aa3388', price: 20000 },
+                { id: 'orange', name: 'Sol Naranja', hex: '#ff8800', body: '#ff8800', dark: '#aa5500', price: 20000 },
+                { id: 'white', name: 'Estrella Blanca', hex: '#ffffff', body: '#ffffff', dark: '#aaaaaa', price: 20000 }
+            ];
+            
+            // Cargar colores comprados
+            var ownedColors = JSON.parse(localStorage.getItem('ownedColors') || '["cyan"]');
+            var currentColor = localStorage.getItem('currentColor') || 'cyan';
+            
+            colors.forEach(function(c) {
+                c.owned = ownedColors.indexOf(c.id) !== -1;
+            });
+            
+            var player = {
+                x: canvas.width / 2,
+                y: canvas.height - 180,
+                width: 50,
+                height: 60,
+                speed: 7
+            };
+            
+            var bullets = [];
+            var enemies = [];
+            var particles = [];
+            var enemySpawnTimer = 0;
+            var enemySpawnInterval = 50;
+            
+            var touchControls = { left: false, right: false, fire: false };
+            
+            // Elementos DOM
+            var btnLeft = document.getElementById('btnLeft');
+            var btnRight = document.getElementById('btnRight');
+            var btnFire = document.getElementById('btnFire');
+            var playBtn = document.getElementById('playBtn');
+            var shopBtn = document.getElementById('shopBtn');
+            var startBtn = document.getElementById('startBtn');
+            var restartBtn = document.getElementById('restartBtn');
+            var backBtn = document.getElementById('backBtn');
+            var menuBtn = document.getElementById('menuBtn');
+            
+            // Actualizar displays de monedas
+            function updateCoinDisplays() {
+                document.getElementById('menuCoins').textContent = totalCoins.toLocaleString();
+                document.getElementById('shopCoins').textContent = totalCoins.toLocaleString();
+                document.querySelector('#coins .stat-value').textContent = sessionCoins;
+            }
+            
+            // Guardar datos
+            function saveData() {
+                localStorage.setItem('spaceCoins', totalCoins.toString());
+                localStorage.setItem('ownedColors', JSON.stringify(ownedColors));
+                localStorage.setItem('currentColor', currentColor);
+            }
+            
+            // Configurar botones táctiles
+            function setupBtn(btn, control) {
+                btn.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    touchControls[control] = true;
+                    btn.style.transform = 'scale(0.9)';
+                });
+                
+                btn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    touchControls[control] = false;
+                    btn.style.transform = 'scale(1)';
+                });
+                
+                btn.addEventListener('mousedown', function() {
+                    touchControls[control] = true;
+                });
+                btn.addEventListener('mouseup', function() {
+                    touchControls[control] = false;
+                });
+            }
+            
+            setupBtn(btnLeft, 'left');
+            setupBtn(btnRight, 'right');
+            setupBtn(btnFire, 'fire');
+            
+            // Navegación de menús
+            playBtn.addEventListener('click', function() {
+                document.getElementById('mainMenu').classList.add('hidden');
+                document.getElementById('startScreen').classList.remove('hidden');
+            });
+            
+            playBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                document.getElementById('mainMenu').classList.add('hidden');
+                document.getElementById('startScreen').classList.remove('hidden');
+            });
+            
+            shopBtn.addEventListener('click', openShop);
+            shopBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                openShop();
+            });
+            
+            startBtn.addEventListener('click', startGame);
+            startBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                startGame();
+            });
+            
+            restartBtn.addEventListener('click', function() {
+                document.getElementById('gameOverScreen').classList.add('hidden');
+                document.getElementById('startScreen').classList.remove('hidden');
+            });
+            
+            restartBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                document.getElementById('gameOverScreen').classList.add('hidden');
+                document.getElementById('startScreen').classList.remove('hidden');
+            });
+            
+            backBtn.addEventListener('click', function() {
+                document.getElementById('shopScreen').classList.add('hidden');
+                document.getElementById('mainMenu').classList.remove('hidden');
+                updateCoinDisplays();
+            });
+            
+            backBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                document.getElementById('shopScreen').classList.add('hidden');
+                document.getElementById('mainMenu').classList.remove('hidden');
+                updateCoinDisplays();
+            });
+            
+            menuBtn.addEventListener('click', function() {
+                document.getElementById('gameOverScreen').classList.add('hidden');
+                document.getElementById('mainMenu').classList.remove('hidden');
+                updateCoinDisplays();
+            });
+            
+            menuBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                document.getElementById('gameOverScreen').classList.add('hidden');
+                document.getElementById('mainMenu').classList.remove('hidden');
+                updateCoinDisplays();
+            });
+            
+            // Abrir tienda
+            function openShop() {
+                document.getElementById('mainMenu').classList.add('hidden');
+                document.getElementById('shopScreen').classList.remove('hidden');
+                renderShop();
+                updateCoinDisplays();
+            }
+            
+            // Renderizar tienda
+            function renderShop() {
+                var grid = document.getElementById('colorGrid');
+                grid.innerHTML = '';
+                
+                colors.filter(function(c) { return !c.owned; }).forEach(function(color) {
+                    var item = document.createElement('div');
+                    item.className = 'color-item';
+                    
+                    var preview = document.createElement('div');
+                    preview.className = 'color-preview';
+                    preview.style.background = color.hex;
+                    preview.style.boxShadow = '0 0 20px ' + color.hex;
+                    
+                    var name = document.createElement('div');
+                    name.className = 'color-name';
+                    name.textContent = color.name;
+                    
+                    var price = document.createElement('div');
+                    price.className = 'color-price';
+                    price.textContent = color.price.toLocaleString() + ' monedas';
+                    
+                    var buyBtn = document.createElement('button');
+                    buyBtn.className = 'btn buy';
+                    buyBtn.textContent = 'COMPRAR';
+                    buyBtn.disabled = totalCoins < color.price;
+                    
+                    buyBtn.onclick = function() {
+                        if (totalCoins >= color.price) {
+                            totalCoins -= color.price;
+                            color.owned = true;
+                            ownedColors.push(color.id);
+                            currentColor = color.id;
+                            saveData();
+                            updateCoinDisplays();
+                            renderShop();
+                        }
+                    };
+                    
+                    item.appendChild(preview);
+                    item.appendChild(name);
+                    item.appendChild(price);
+                    item.appendChild(buyBtn);
+                    grid.appendChild(item);
+                });
+                
+                // Mostrar colores comprados al final
+                colors.filter(function(c) { return c.owned && c.id !== 'cyan'; }).forEach(function(color) {
+                    var item = document.createElement('div');
+                    item.className = 'color-item owned';
+                    
+                    var preview = document.createElement('div');
+                    preview.className = 'color-preview';
+                    preview.style.background = color.hex;
+                    
+                    var name = document.createElement('div');
+                    name.className = 'color-name';
+                    name.textContent = color.name;
+                    
+                    var badge = document.createElement('div');
+                    badge.className = 'owned-badge';
+                    badge.textContent = '✓ COMPRADO';
+                    
+                    var useBtn = document.createElement('button');
+                    useBtn.className = 'btn buy';
+                    useBtn.textContent = currentColor === color.id ? 'ACTIVO' : 'USAR';
+                    useBtn.disabled = currentColor === color.id;
+                    
+                    useBtn.onclick = function() {
+                        currentColor = color.id;
+                        saveData();
+                        renderShop();
+                    };
+                    
+                    item.appendChild(preview);
+                    item.appendChild(name);
+                    item.appendChild(badge);
+                    item.appendChild(useBtn);
+                    grid.appendChild(item);
+                });
+                
+                if (grid.innerHTML === '') {
+                    grid.innerHTML = '<div style="color: #888; grid-column: 2; text-align: center;">¡Has comprado todos los colores!</div>';
+                }
+            }
+            
+            function shoot() {
+                bullets.push({
+                    x: player.x,
+                    y: player.y - 40,
+                    width: 4,
+                    height: 15,
+                    speed: 15
+                });
+            }
+            
+            function spawnEnemy() {
+                var isBig = Math.random() > 0.65;
+                var size = isBig ? 50 : 30;
+                enemies.push({
+                    x: Math.random() * (canvas.width - size) + size/2,
+                    y: -size,
+                    width: size,
+                    height: size,
+                    speed: isBig ? 2 : 3.5 + Math.random(),
+                    isBig: isBig,
+                    color: isBig ? '#ff3366' : '#ffaa00',
+                    points: isBig ? 3 : 1,
+                    wobble: Math.random() * Math.PI * 2
+                });
+            }
+            
+            function createExplosion(x, y, color) {
+                for (var i = 0; i < 10; i++) {
+                    particles.push({
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 12,
+                        vy: (Math.random() - 0.5) * 12,
+                        life: 20,
+                        color: color,
+                        size: Math.random() * 4 + 2
+                    });
+                }
+            }
+            
+            function update() {
+                if (!gameRunning) return;
+                
+                elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+                var mins = Math.floor(elapsedTime / 60).toString().padStart(2, '0');
+                var secs = (elapsedTime % 60).toString().padStart(2, '0');
+                document.querySelector('#time .stat-value').textContent = mins + ':' + secs;
+                
+                if (touchControls.left) {
+                    player.x -= player.speed;
+                    if (player.x < 35) player.x = 35;
+                }
+                if (touchControls.right) {
+                    player.x += player.speed;
+                    if (player.x > canvas.width - 35) player.x = canvas.width - 35;
+                }
+                
+                if (touchControls.fire) {
+                    var now = Date.now();
+                    if (!player.lastShot || now - player.lastShot > 250) {
+                        shoot();
+                        player.lastShot = now;
+                    }
+                }
+                
+                bullets = bullets.filter(function(b) {
+                    b.y -= b.speed;
+                    return b.y > -20;
+                });
+                
+                enemySpawnTimer++;
+                if (enemySpawnTimer >= enemySpawnInterval) {
+                    spawnEnemy();
+                    enemySpawnTimer = 0;
+                    if (enemySpawnInterval > 20) enemySpawnInterval -= 0.3;
+                }
+                
+                enemies = enemies.filter(function(enemy) {
+                    enemy.y += enemy.speed;
+                    enemy.wobble += 0.08;
+                    enemy.x += Math.sin(enemy.wobble) * 1.5;
+                    
+                    if (enemy.x < enemy.width/2) enemy.x = enemy.width/2;
+                    if (enemy.x > canvas.width - enemy.width/2) enemy.x = canvas.width - enemy.width/2;
+                    
+                    if (checkCollision(enemy, player)) {
+                        lives--;
+                        updateLives();
+                        createExplosion(enemy.x, enemy.y, enemy.color);
+                        if (lives <= 0) gameOver();
+                        return false;
+                    }
+                    
+                    for (var i = bullets.length - 1; i >= 0; i--) {
+                        if (checkCollision(enemy, bullets[i])) {
+                            var points = enemy.points;
+                            score += points;
+                            sessionCoins += points;
+                            document.querySelector('#score .stat-value').textContent = score;
+                            document.querySelector('#coins .stat-value').textContent = sessionCoins;
+                            createExplosion(enemy.x, enemy.y, enemy.color);
+                            bullets.splice(i, 1);
+                            return false;
+                        }
+                    }
+                    
+                    return enemy.y < canvas.height + 50;
+                });
+                
+                particles = particles.filter(function(p) {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life--;
+                    p.vx *= 0.95;
+                    p.vy *= 0.95;
+                    return p.life > 0;
+                });
+            }
+            
+            function checkCollision(r1, r2) {
+                var x1 = r1.x - r1.width/2;
+                var y1 = r1.y - r1.height/2;
+                var x2 = r2.x - r2.width/2;
+                var y2 = r2.y - r2.height/2;
+                
+                return x1 < x2 + r2.width &&
+                       x1 + r1.width > x2 &&
+                       y1 < r2.y + r2.height &&
+                       y1 + r1.height > y2;
+            }
+            
+            function getCurrentColor() {
+                return colors.find(function(c) { return c.id === currentColor; }) || colors[0];
+            }
+            
+            function drawPlayer() {
+                var color = getCurrentColor();
+                
+                ctx.save();
+                ctx.translate(player.x, player.y);
+                
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = color.hex;
+                
+                // Ala izquierda
+                ctx.fillStyle = color.dark;
+                ctx.beginPath();
+                ctx.moveTo(-10, 10);
+                ctx.lineTo(-35, 25);
+                ctx.lineTo(-30, 35);
+                ctx.lineTo(-8, 25);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Ala derecha
+                ctx.beginPath();
+                ctx.moveTo(10, 10);
+                ctx.lineTo(35, 25);
+                ctx.lineTo(30, 35);
+                ctx.lineTo(8, 25);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Cuerpo principal
+                ctx.fillStyle = color.body;
+                ctx.beginPath();
+                ctx.moveTo(0, -30);
+                ctx.lineTo(-12, 15);
+                ctx.lineTo(-8, 30);
+                ctx.lineTo(0, 25);
+                ctx.lineTo(8, 30);
+                ctx.lineTo(12, 15);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Cabina circular
+                ctx.fillStyle = '#ffffff';
+                ctx.globalAlpha = 0.8;
+                ctx.beginPath();
+                ctx.arc(0, -5, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = color.body;
+                ctx.globalAlpha = 0.6;
+                ctx.beginPath();
+                ctx.arc(0, -5, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+                
+                // Fuego del motor
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#ff6600';
+                
+                var flameHeight = 15 + Math.random() * 10;
+                
+                ctx.fillStyle = '#ffaa00';
+                ctx.beginPath();
+                ctx.moveTo(-6, 30);
+                ctx.lineTo(0, 30 + flameHeight);
+                ctx.lineTo(6, 30);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.fillStyle = '#ff4400';
+                ctx.beginPath();
+                ctx.moveTo(-3, 30);
+                ctx.lineTo(0, 30 + flameHeight * 0.7);
+                ctx.lineTo(3, 30);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            }
+            
+            function draw() {
+                ctx.fillStyle = 'rgba(10, 10, 26, 0.4)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#fff';
+                var time = Date.now();
+                for (var i = 0; i < 30; i++) {
+                    var x = (i * 137) % canvas.width;
+                    var y = (i * 71 + time * 0.02) % canvas.height;
+                    ctx.fillRect(x, y, 2, 2);
+                }
+                
+                if (!gameRunning) return;
+                
+                drawPlayer();
+                
+                ctx.fillStyle = '#00ff88';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#00ff88';
+                bullets.forEach(function(b) {
+                    ctx.fillRect(b.x - 2, b.y, 4, 15);
+                });
+                
+                enemies.forEach(function(enemy) {
+                    ctx.save();
+                    ctx.translate(enemy.x, enemy.y);
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = enemy.color;
+                    ctx.fillStyle = enemy.color;
+                    
+                    if (enemy.isBig) {
+                        ctx.beginPath();
+                        for (var i = 0; i < 5; i++) {
+                            var angle = (i * 4 * Math.PI) / 5 - Math.PI/2;
+                            var r = enemy.width/2;
+                            ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        ctx.fillStyle = '#fff';
+                        ctx.font = 'bold 12px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('3', 0, 4);
+                    } else {
+                        ctx.beginPath();
+                        ctx.moveTo(0, -15);
+                        ctx.lineTo(15, 0);
+                        ctx.lineTo(0, 15);
+                        ctx.lineTo(-15, 0);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                });
+                
+                particles.forEach(function(p) {
+                    ctx.save();
+                    ctx.globalAlpha = p.life / 20;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+            
+            function updateLives() {
+                var hearts = document.querySelectorAll('.heart');
+                hearts.forEach(function(h, i) {
+                    h.classList.toggle('lost', i >= lives);
+                });
+            }
+            
+            function gameLoop() {
+                update();
+                draw();
+                animationId = requestAnimationFrame(gameLoop);
+            }
+            
+            function startGame() {
+                document.getElementById('startScreen').classList.add('hidden');
+                document.getElementById('controls').classList.remove('hidden');
+                
+                gameRunning = true;
+                lives = 3;
+                score = 0;
+                sessionCoins = 0;
+                startTime = Date.now();
+                bullets = [];
+                enemies = [];
+                particles = [];
+                enemySpawnInterval = 50;
+                player.x = canvas.width / 2;
+                player.y = canvas.height - 180;
+                
+                updateLives();
+                document.querySelector('#score .stat-value').textContent = '0';
+                document.querySelector('#coins .stat-value').textContent = '0';
+                document.querySelector('#time .stat-value').textContent = '00:00';
+            }
+            
+            function gameOver() {
+                gameRunning = false;
+                document.getElementById('controls').classList.add('hidden');
+                
+                // Sumar monedas ganadas al total
+                totalCoins += sessionCoins;
+                saveData();
+                
+                var mins = Math.floor(elapsedTime / 60).toString().padStart(2, '0');
+                var secs = (elapsedTime % 60).toString().padStart(2, '0');
+                
+                document.getElementById('finalScore').textContent = score;
+                document.getElementById('finalCoins').textContent = sessionCoins;
+                document.getElementById('finalTime').textContent = mins + ':' + secs;
+                document.getElementById('gameOverScreen').classList.remove('hidden');
+            }
+            
+            // Inicializar
+            updateCoinDisplays();
+            gameLoop();
+        }
+    </script>
+</body>
+</html>
